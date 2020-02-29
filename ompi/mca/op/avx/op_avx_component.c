@@ -42,11 +42,14 @@ static int avx_component_register(void);
 
 #include <immintrin.h>
 
-static int has_intel_AVX512f_features(void)
+static uint32_t has_intel_AVX_features(void)
 {
-    const unsigned long avx512_features = _FEATURE_AVX512F;
+    uint32_t flags = 0;
 
-    return _may_i_use_cpu_feature( avx512_features );
+    flags |= _may_i_use_cpu_feature(_FEATURE_AVX512F) ? OMPI_OP_AVX_HAS_AVX512_FLAG : 0;
+    flags |= _may_i_use_cpu_feature(_FEATURE_AVX2)    ? OMPI_OP_AVX_HAS_AVX2_FLAG   : 0;
+    flags |= _may_i_use_cpu_feature(_FEATURE_AVX)     ? OMPI_OP_AVX_HAS_AVX_FLAG    : 0;
+    return flags;
 }
 #else /* non-Intel compiler */
 #include <stdint.h>
@@ -73,22 +76,26 @@ static void run_cpuid(uint32_t eax, uint32_t ecx, uint32_t* abcd)
 #endif
 }
 
-static int has_intel_AVX512f_features(void)
+static uint32_t has_intel_AVX_features(void)
 {
-  uint32_t abcd[4];
-  //uint32_t avx2_mask = (1 << 5);  // AVX2
-  uint32_t avx2f_mask = (1 << 16);  // AVX2F
+    const uint32_t avx2f_mask = (1 << 16);  // AVX512F
+    const uint32_t avx2_mask  = (1 << 5);   // AVX2
+    const uint32_t avx_mask   = (1 << 28);   // AVX
+    uint32_t flags = 0, abcd[4];
 
 #if defined(__APPLE__)
-  uint32_t osxsave_mask = (1 << 27);  // OSX.
-  run_cpuid( 1, 0, abcd );
-  // OS supports extended processor state management ?
-  if ( (abcd[2] & osxsave_mask) != osxsave_mask )
-    return 0;
+    uint32_t osxsave_mask = (1 << 27);  // OSX.
+    run_cpuid( 1, 0, abcd );
+    // OS supports extended processor state management ?
+    if ( (abcd[2] & osxsave_mask) != osxsave_mask )
+        return 0;
 #endif  /* defined(__APPLE__) */
 
-  run_cpuid( 7, 0, abcd );
-  return ((abcd[1] & avx2f_mask) == avx2f_mask);
+    run_cpuid( 7, 0, abcd );
+    flags |= ((abcd[1] & avx2f_mask) == avx2f_mask) ? OMPI_OP_AVX_HAS_AVX512_FLAG : 0;
+    flags |= ((abcd[1] & avx2_mask)  == avx2_mask)  ? OMPI_OP_AVX_HAS_AVX2_FLAG   : 0;
+    flags |= ((abcd[1] & avx_mask)   == avx_mask)   ? OMPI_OP_AVX_HAS_AVX_FLAG    : 0;
+    return flags;
 }
 #endif /* non-Intel compiler */
 
@@ -119,16 +126,14 @@ ompi_op_avx_component_t mca_op_avx_component = {
  */
 static int avx_component_open(void)
 {
-    /* A first level check to see if avx is even available in this
-       process.  E.g., you may want to do a first-order check to see
-       if hardware is available.  If so, return OMPI_SUCCESS.  If not,
-       return anything other than OMPI_SUCCESS and the component will
-       silently be ignored.
-
-       Note that if this function returns non-OMPI_SUCCESS, then this
-       component won't even be shown in ompi_info output (which is
-       probably not what you want).
-    */
+    mca_op_avx_component.flags = has_intel_AVX_features();
+    /* A first level check to see what level of AVX is available on the
+     * hardware.
+     *
+     * Note that if this function returns non-OMPI_SUCCESS, then this
+     * component won't even be shown in ompi_info output (which is
+     * probably not what you want).
+     */
     return OMPI_SUCCESS;
 }
 
@@ -153,16 +158,15 @@ static int avx_component_close(void)
 static int
 avx_component_register(void)
 {
-    mca_op_avx_component.double_supported = true;
+    mca_op_avx_component.flags = has_intel_AVX_features();
     (void) mca_base_component_var_register(&mca_op_avx_component.super.opc_version,
-                                           "double_supported",
-                                           "Whether the double precision data types are supported or not",
-                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           "avx_support",
+                                           "What level of AVX support should be used (combination of AVX 0x01, AVX2 0x02, AVX512f 0x04)",
+                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                            OPAL_INFO_LVL_9,
-                                           MCA_BASE_VAR_SCOPE_READONLY,
-                                           &mca_op_avx_component.double_supported);
-
-    return OMPI_SUCCESS;
+                                           MCA_BASE_VAR_SCOPE_CONSTANT,
+                                           &mca_op_avx_component.flags);
+return OMPI_SUCCESS;
 }
 
 /*
@@ -172,7 +176,7 @@ static int
 avx_component_init_query(bool enable_progress_threads,
 			 bool enable_mpi_thread_multiple)
 {
-    if( !has_intel_AVX512f_features() )
+    if( 0 == mca_op_avx_component.flags )
         return OMPI_ERR_NOT_SUPPORTED;
     return OMPI_SUCCESS;
 }

@@ -21,6 +21,9 @@
 
 BEGIN_C_DECLS
 
+#define OMPI_OP_AVX_HAS_AVX512_FLAG  0x00000004
+#define OMPI_OP_AVX_HAS_AVX2_FLAG    0x00000002
+#define OMPI_OP_AVX_HAS_AVX_FLAG     0x00000001
 /**
  * Derive a struct from the base op component struct, allowing us to
  * cache some component-specific information on our well-known
@@ -37,9 +40,7 @@ typedef struct {
        avxs; replace them with whatever is relevant for your
        component. */
 
-    /** A simple boolean indicating whether double precision is
-        supported. */
-    bool double_supported;
+    uint32_t flags; /* AVX capabilities supported by the processor */
 } ompi_op_avx_component_t;
 
 /**
