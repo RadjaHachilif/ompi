@@ -234,3 +234,47 @@ int mca_coll_han_scatter_ls_task(void *task_argu)
     ompi_request_complete(temp_req, 1);
     return OMPI_SUCCESS;
 }
+
+/* Reorder sbuf based on rank.
+ * Suppose, message is 0 1 2 3 4 5 6 7
+ * and the processes are mapped on 2 nodes (the processes on the node 0 is 0 2 4 6 and the processes on the node 1 is 1 3 5 7),
+ * so the message needs to be reordered to 0 2 4 6 1 3 5 7
+ */
+void
+ompi_coll_han_reorder_scatter(const void *sbuf,
+                              int scount,
+                              struct ompi_datatype_t *sdtype,
+                              const void *rbuf,
+                              int rcount,
+                              struct ompi_datatype_t *rdtype,
+                              struct ompi_communicator_t *up_comm,
+                              struct ompi_communicator_t *low_comm,
+                              int *topo)
+{
+    int i, j;
+
+    /* discovery topology */
+    int low_size = ompi_comm_size(low_comm);
+    int up_size = ompi_comm_size(up_comm);
+
+    /* Reorder */
+            ptrdiff_t sextent;
+            ompi_datatype_type_extent(sdtype, &sextent);
+            for (i = 0; i < up_size; i++) {
+                for (j = 0; j < low_size; j++) {
+                    /*OPAL_OUTPUT_VERBOSE((30, mca_coll_han_component.han_output,
+                                         "[%d]: Han Scatter copy from %d %d\n", w_rank,
+                                         (i * low_size + j) * 2 + 1,
+                                         topo[(i * low_size + j) * 2 + 1]));*/
+                    ompi_datatype_copy_content_same_ddt(sdtype, (ptrdiff_t) scount,
+                                                        (char *) rbuf + sextent * (i * low_size +
+                                                                                  j) *
+                                                        (ptrdiff_t) scount,
+                                                        (char *) sbuf +
+                                                        sextent *
+                                                        (ptrdiff_t) topo[(i * low_size + j) * 2 +
+                                                                         1] * (ptrdiff_t) scount);
+                }
+            }
+    
+}

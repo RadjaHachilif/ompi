@@ -130,6 +130,7 @@ static bool is_simple_implemented(COLLTYPE_T coll)
     switch(coll) {
         case ALLGATHER:
         case ALLREDUCE:
+        case ALLTOALL:
         case BCAST:
         case GATHER:
         case REDUCE:
@@ -309,6 +310,21 @@ static int han_register(void)
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &cs->han_allgather_low_module);
 
+    cs->han_alltoall_up_module = 0;
+    (void) mca_base_component_var_register(c, "alltoall_up_module",
+                                           "up level module for alltoall, 0 libnbc, 1 adapt",
+                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &cs->han_alltoall_up_module);
+
+    cs->han_alltoall_low_module = 0;
+    (void) mca_base_component_var_register(c, "alltoall_low_module",
+                                           "low level module for alltoall, 0 sm, 1 shared",
+                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &cs->han_alltoall_low_module);
     cs->han_gather_up_module = 0;
     (void) mca_base_component_var_register(c, "gather_up_module",
                                            "up level module for gather, 0 libnbc, 1 adapt",

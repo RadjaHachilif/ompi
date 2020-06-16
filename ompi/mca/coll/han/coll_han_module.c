@@ -118,6 +118,7 @@ static void mca_coll_han_module_destruct(mca_coll_han_module_t * module)
 
     OBJ_RELEASE_IF_NOT_NULL(module->previous_allgather_module);
     OBJ_RELEASE_IF_NOT_NULL(module->previous_allreduce_module);
+    OBJ_RELEASE_IF_NOT_NULL(module->previous_alltoall_module);
     OBJ_RELEASE_IF_NOT_NULL(module->previous_bcast_module);
     OBJ_RELEASE_IF_NOT_NULL(module->previous_gather_module);
     OBJ_RELEASE_IF_NOT_NULL(module->previous_reduce_module);
@@ -202,7 +203,7 @@ mca_coll_han_comm_query(struct ompi_communicator_t * comm, int *priority)
         han_module->super.coll_allgather  = mca_coll_han_allgather_intra_dynamic;
         han_module->super.coll_allgatherv = NULL;
         han_module->super.coll_allreduce  = mca_coll_han_allreduce_intra_dynamic;
-        han_module->super.coll_alltoall   = NULL;
+        han_module->super.coll_alltoall   = mca_coll_han_alltoall_intra_dynamic;
         han_module->super.coll_alltoallv  = NULL;
         han_module->super.coll_alltoallw  = NULL;
         han_module->super.coll_barrier    = NULL;
@@ -222,7 +223,7 @@ mca_coll_han_comm_query(struct ompi_communicator_t * comm, int *priority)
         han_module->super.coll_allgather  = mca_coll_han_allgather_intra_dynamic;
         han_module->super.coll_allgatherv = mca_coll_han_allgatherv_intra_dynamic;
         han_module->super.coll_allreduce  = mca_coll_han_allreduce_intra_dynamic;
-        han_module->super.coll_alltoall   = NULL;
+        han_module->super.coll_alltoall   = mca_coll_han_alltoall_intra_dynamic;
         han_module->super.coll_alltoallv  = NULL;
         han_module->super.coll_alltoallw  = NULL;
         han_module->super.coll_barrier    = NULL;
@@ -275,6 +276,7 @@ static int han_module_enable(mca_coll_base_module_t * module,
     HAN_SAVE_PREV_COLL_API(allgather);
     HAN_SAVE_PREV_COLL_API(allgatherv);
     HAN_SAVE_PREV_COLL_API(allreduce);
+    HAN_SAVE_PREV_COLL_API(alltoall);
     HAN_SAVE_PREV_COLL_API(bcast);
     HAN_SAVE_PREV_COLL_API(gather);
     HAN_SAVE_PREV_COLL_API(reduce);
@@ -298,6 +300,7 @@ static int mca_coll_han_module_disable(mca_coll_base_module_t * module,
     OBJ_RELEASE_IF_NOT_NULL(han_module->previous_allgather_module);
     OBJ_RELEASE_IF_NOT_NULL(han_module->previous_allgatherv_module);
     OBJ_RELEASE_IF_NOT_NULL(han_module->previous_allreduce_module);
+    OBJ_RELEASE_IF_NOT_NULL(han_module->previous_alltoall_module);    
     OBJ_RELEASE_IF_NOT_NULL(han_module->previous_bcast_module);
     OBJ_RELEASE_IF_NOT_NULL(han_module->previous_gather_module);
     OBJ_RELEASE_IF_NOT_NULL(han_module->previous_reduce_module);

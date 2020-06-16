@@ -20,6 +20,7 @@ coll_han_scatter.c \
 coll_han_gather.c \
 coll_han_allreduce.c \
 coll_han_allgather.c \
+coll_han_alltoall.c \
 coll_han_component.c \
 coll_han_module.c \
 coll_han_trigger.c \

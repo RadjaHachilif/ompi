@@ -159,6 +159,28 @@ struct mca_allgather_argu_s {
 };
 typedef struct mca_allgather_argu_s mca_allgather_argu_t;
 
+struct mca_alltoall_argu_s {
+    mca_coll_task_t *cur_task;
+    void *sbuf;
+    void *sbuf_inter_free;
+    int scount;
+    struct ompi_datatype_t *sdtype;
+    void *rbuf;
+    int rcount;
+    struct ompi_datatype_t *rdtype;
+    int root_low_rank;
+    struct ompi_communicator_t *comm;
+    struct ompi_communicator_t *up_comm;
+    struct ompi_communicator_t *low_comm;
+    int w_rank;
+    int w_size;
+    bool noop;
+    bool is_mapbycore;
+    int *topo;
+    ompi_request_t *req;
+};
+typedef struct mca_alltoall_argu_s mca_alltoall_argu_t;
+
 /**
  * Structure to hold the han coll component.  First it holds the
  * base coll component, and then holds a bunch of
@@ -195,6 +217,10 @@ typedef struct mca_coll_han_component_t {
     uint32_t han_allgather_up_module;
     /* low level module for allgather */
     uint32_t han_allgather_low_module;
+    /* up level module for alltoall */
+    uint32_t han_alltoall_up_module;
+    /* low level module for alltoall */
+    uint32_t han_alltoall_low_module;
     /* up level module for gather */
     uint32_t han_gather_up_module;
     /* low level module for gather */
@@ -245,6 +271,7 @@ typedef struct collective_fallback_t {
         mca_coll_base_module_allgather_fn_t allgather;
         mca_coll_base_module_allgatherv_fn_t allgatherv;
         mca_coll_base_module_allreduce_fn_t allreduce;
+        mca_coll_base_module_alltoall_fn_t alltoall;
         mca_coll_base_module_bcast_fn_t bcast;
         mca_coll_base_module_gather_fn_t gather;
         mca_coll_base_module_reduce_fn_t reduce;
@@ -305,6 +332,7 @@ OBJ_CLASS_DECLARATION(mca_coll_han_module_t);
 #define previous_allgather  previous_routines[ALLGATHER].previous_routine.allgather
 #define previous_allgatherv previous_routines[ALLGATHERV].previous_routine.allgatherv
 #define previous_allreduce  previous_routines[ALLREDUCE].previous_routine.allreduce
+#define previous_alltoall   previous_routines[ALLTOALL].previous_routine.alltoall
 #define previous_bcast      previous_routines[BCAST].previous_routine.bcast
 #define previous_gather     previous_routines[GATHER].previous_routine.gather
 #define previous_reduce     previous_routines[REDUCE].previous_routine.reduce
@@ -313,6 +341,7 @@ OBJ_CLASS_DECLARATION(mca_coll_han_module_t);
 #define previous_allgather_module  previous_routines[ALLGATHER].previous_module
 #define previous_allgatherv_module previous_routines[ALLGATHERV].previous_module
 #define previous_allreduce_module  previous_routines[ALLREDUCE].previous_module
+#define previous_alltoall_module  previous_routines[ALLTOALL].previous_module
 #define previous_bcast_module      previous_routines[BCAST].previous_module
 #define previous_gather_module     previous_routines[GATHER].previous_module
 #define previous_reduce_module     previous_routines[REDUCE].previous_module
@@ -367,6 +396,9 @@ mca_coll_han_allgatherv_intra_dynamic(ALLGATHERV_BASE_ARGS,
 int
 mca_coll_han_allreduce_intra_dynamic(ALLREDUCE_BASE_ARGS,
                                      mca_coll_base_module_t *module);
+int
+mca_coll_han_alltoall_intra_dynamic(ALLTOALL_BASE_ARGS,
+                                     mca_coll_base_module_t *module);                                     
 int
 mca_coll_han_bcast_intra_dynamic(BCAST_BASE_ARGS,
                                  mca_coll_base_module_t *module);
@@ -504,6 +536,16 @@ mca_coll_han_scatter_intra(const void *sbuf, int scount,
                             struct ompi_communicator_t *comm, mca_coll_base_module_t * module);
 int mca_coll_han_scatter_us_task(void *task_argu);
 int mca_coll_han_scatter_ls_task(void *task_argu);
+void
+ompi_coll_han_reorder_scatter(const void *sbuf,
+                              int scount,
+                              struct ompi_datatype_t *sdtype,
+                              const void *rbuf,
+                              int rcount,
+                              struct ompi_datatype_t *rdtype,
+                              struct ompi_communicator_t *up_comm,
+                              struct ompi_communicator_t *low_comm,
+                              int *topo);
 void mac_coll_han_set_scatter_argu(mca_scatter_argu_t * argu,
                                    mca_coll_task_t * cur_task,
                                    void *sbuf,
@@ -596,5 +638,78 @@ mca_coll_han_allgather_intra_simple(const void *sbuf, int scount,
                                         struct ompi_communicator_t *comm,
                                         mca_coll_base_module_t *module);
 
+
+/* Alltoall */
+int
+mca_coll_han_alltoall_intra(const void *sbuf, int scount,
+                             struct ompi_datatype_t *sdtype,
+                             void *rbuf, int rcount,
+                             struct ompi_datatype_t *rdtype,
+                             struct ompi_communicator_t *comm,
+                             mca_coll_base_module_t * module);
+int mca_coll_han_alltoall_lg_task(void *task_argu);
+int mca_coll_han_alltoall_uata_task(void *task_argu);
+int mca_coll_han_alltoall_ls_task(void *task_argu);
+void mac_coll_han_set_alltoall_argu(mca_alltoall_argu_t * argu,
+                                     mca_coll_task_t * cur_task,
+                                     void *sbuf,
+                                     void *sbuf_inter_free,
+                                     int scount,
+                                     struct ompi_datatype_t *sdtype,
+                                     void *rbuf,
+                                     int rcount,
+                                     struct ompi_datatype_t *rdtype,
+                                     int root_low_rank,
+                                     struct ompi_communicator_t *comm,
+                                     struct ompi_communicator_t *up_comm,
+                                     struct ompi_communicator_t *low_comm,
+                                     int w_rank,
+                                     int w_size,
+                                     bool noop,
+                                     bool is_mapbycore,
+                                     int *topo,
+                                     ompi_request_t * req);
+int
+mca_coll_han_alltoall_intra_simple(const void *sbuf, int scount,
+                                    struct ompi_datatype_t *sdtype,
+                                    void* rbuf, int rcount,
+                                    struct ompi_datatype_t *rdtype,
+                                    struct ompi_communicator_t *comm,
+                                    mca_coll_base_module_t *module);                                 
+void
+ompi_coll_han_reorder_alltoall_scatter(const void *sbuf,
+                                    int scount,
+                                    struct ompi_datatype_t *sdtype,
+                                    const void *rbuf,
+                                    int rcount,
+                                    struct ompi_datatype_t *rdtype,
+                                    struct ompi_communicator_t *comm,
+                                    struct ompi_communicator_t *up_comm,
+                                    struct ompi_communicator_t *low_comm,
+                                    int *topo);
+void
+ompi_coll_han_reorder_alltoall_gather(const void *sbuf,
+                   void *rbuf, int rcount,
+                   struct ompi_datatype_t *rdtype,
+                   struct ompi_communicator_t *comm,
+                   struct ompi_communicator_t *up_comm,
+                   struct ompi_communicator_t *low_comm,                   
+                   int * topo);
+/* loop version of alltoall */                   
+mca_coll_han_alltoall_intra(const void *sbuf, int scount,
+                             struct ompi_datatype_t *sdtype,
+                             void *rbuf, int rcount,
+                             struct ompi_datatype_t *rdtype,
+                             struct ompi_communicator_t *comm,
+                             mca_coll_base_module_t * module);
+int mca_coll_han_alltoall_loop_lg_task(void *task_argu);
+int mca_coll_han_alltoall_loop_uata_task(void *task_argu);
+int mca_coll_han_alltoall_loop_ls_task(void *task_argu);
+int mca_coll_han_alltoall_loop_intra_simple(const void *sbuf, int scount,
+                                    struct ompi_datatype_t *sdtype,
+                                    void* rbuf, int rcount,
+                                    struct ompi_datatype_t *rdtype,
+                                    struct ompi_communicator_t *comm,
+                                    mca_coll_base_module_t *module); 
 END_C_DECLS
 #endif                          /* MCA_COLL_HAN_EXPORT_H */
